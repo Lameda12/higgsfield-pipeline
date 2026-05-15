@@ -8,7 +8,7 @@ from pathlib import Path
 import httpx
 import higgsfield_client
 
-_IMAGE_MODEL = "higgsfield-ai/soul/standard"
+_IMAGE_MODEL = "reve/text-to-image"
 
 
 def _check_credentials() -> None:
@@ -37,11 +37,7 @@ async def generate_image(copy: str, output_dir: Path) -> Path:
 
     result = await higgsfield_client.subscribe_async(
         _IMAGE_MODEL,
-        arguments={
-            "prompt": _image_prompt(copy),
-            "aspect_ratio": "1:1",
-            "resolution": "720p",
-        },
+        arguments={"prompt": _image_prompt(copy)},
     )
 
     images = result.get("images") or []

@@ -68,7 +68,9 @@ async def _run_pipeline(url: str, image: bool, output_dir: Path, dry_run: bool =
         except asyncio.TimeoutError:
             click.echo("[video_gen] WARNING: video generation timed out after 120s")
         except Exception as exc:
+            import traceback
             click.echo(f"[video_gen] WARNING: video generation failed — {exc}")
+            click.echo(traceback.format_exc())
 
         if image:
             click.echo("[image_gen] Generating image ...")

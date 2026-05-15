@@ -1,102 +1,95 @@
-"""Video generation via Higgsfield API (text→image→video pipeline)."""
+"""Video generation via Higgsfield CLI (text→image→video pipeline)."""
 
 from __future__ import annotations
 
-import os
+import json
+import re
+import subprocess
 from pathlib import Path
 
 import httpx
-import higgsfield_client
-
-_IMAGE_MODEL = "higgsfield-ai/soul/standard"
-_VIDEO_MODEL = "higgsfield-ai/dop/standard"
 
 
-def _check_credentials() -> None:
-    hf_key = os.getenv("HF_KEY") or os.getenv("HIGGSFIELD_API_KEY")
-    if not hf_key:
-        raise ValueError("HF_KEY (or HIGGSFIELD_API_KEY) not set")
-    # SDK reads HF_KEY automatically; map HIGGSFIELD_API_KEY → HF_KEY if needed
-    if not os.getenv("HF_KEY") and hf_key:
-        os.environ["HF_KEY"] = hf_key
+def _run_cli(args: list[str]) -> str:
+    result = subprocess.run(
+        ["higgsfield"] + args, capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"higgsfield CLI error: {result.stderr.strip()}")
+    return result.stdout.strip()
 
 
 async def generate_video(copy: str, output_dir: Path) -> Path:
     """Generate a campaign video clip from hook copy.
 
-    Two-step pipeline:
-      1. Text → image via higgsfield-ai/soul/standard
-      2. Image → video via higgsfield-ai/dop/standard
+    Step 1: higgsfield generate create flux_2 → CDN URL → extract UUID.
+    Step 2: higgsfield generate create wan2_7 --medias UUID → CDN video URL → download.
 
     Args:
-        copy: The selected hook copy string (used as generation prompt).
-        output_dir: Directory to write the output video file.
+        copy: Selected hook copy string.
+        output_dir: Directory to write campaign_video.mp4.
 
     Returns:
-        Path to the downloaded campaign_video.mp4.
+        Path to the downloaded video file.
 
     Raises:
-        ValueError: If credentials are missing or generation fails.
-        RuntimeError: If image or video generation job fails/is cancelled.
+        RuntimeError: If CLI call fails or output cannot be parsed.
     """
-    _check_credentials()
+    # Step 1: text → image
+    image_stdout = _run_cli([
+        "generate", "create", "flux_2",
+        "--prompt", _image_prompt(copy),
+        "--aspect_ratio", "16:9",
+        "--wait",
+    ])
+    print(f"[video_gen] image stdout: {image_stdout}")
 
-    # Step 1: generate a product image from copy
-    image_url = await _generate_image_url(copy)
+    image_uuid = _extract_uuid_from_output(image_stdout)
+    if not image_uuid:
+        raise RuntimeError(f"Could not extract image UUID from CLI output: {image_stdout!r}")
+    print(f"[video_gen] image UUID: {image_uuid}")
 
-    # Step 2: animate the image into a short video clip
-    video_url = await _generate_video_url(image_url=image_url, prompt=copy)
+    # Step 2: image UUID → video
+    medias_json = json.dumps([{"role": "start_image", "data": {"id": image_uuid, "type": "image"}}])
+    video_stdout = _run_cli([
+        "generate", "create", "wan2_7",
+        "--prompt", _video_prompt(copy),
+        "--medias", medias_json,
+        "--duration", "5",
+        "--wait",
+    ])
+    print(f"[video_gen] video stdout: {video_stdout}")
 
-    # Step 3: download video to output_dir
+    video_url = _extract_url(video_stdout)
+    if not video_url:
+        raise RuntimeError(f"Could not extract video URL from CLI output: {video_stdout!r}")
+    print(f"[video_gen] video URL: {video_url}")
+
     video_path = output_dir / "campaign_video.mp4"
     await _download(video_url, video_path)
-
     return video_path
 
 
-async def _generate_image_url(prompt: str) -> str:
-    """Generate an image and return its hosted URL."""
-    result = await higgsfield_client.subscribe_async(
-        _IMAGE_MODEL,
-        arguments={
-            "prompt": _image_prompt(prompt),
-            "aspect_ratio": "16:9",
-            "resolution": "720p",
-        },
-        on_queue_update=_log_status,
-    )
-
-    images = result.get("images") or []
-    if not images:
-        raise RuntimeError(f"Image generation returned no images. Result: {result}")
-
-    url = images[0].get("url") or images[0].get("raw", {}).get("url", "")
-    if not url:
-        raise RuntimeError(f"Image result missing URL. Result: {result}")
-    return url
+def _extract_uuid_from_output(text: str) -> str:
+    """Extract UUID from CDN URL filename or bare UUID in CLI output."""
+    # Try bare UUID first
+    m = re.search(r"\b([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b", text)
+    if m:
+        return m.group(1)
+    # Try UUID embedded in URL path
+    m = re.search(r"/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})", text)
+    if m:
+        return m.group(1)
+    return ""
 
 
-async def _generate_video_url(image_url: str, prompt: str) -> str:
-    """Animate an image into a video and return its hosted URL."""
-    result = await higgsfield_client.subscribe_async(
-        _VIDEO_MODEL,
-        arguments={
-            "image_url": image_url,
-            "prompt": _video_prompt(prompt),
-            "duration": 5,
-        },
-        on_queue_update=_log_status,
-    )
-
-    video = result.get("video") or {}
-    url = video.get("url") or result.get("url", "")
-    if not url:
-        raise RuntimeError(f"Video generation returned no URL. Result: {result}")
-    return url
+def _extract_url(text: str) -> str:
+    """Extract first https:// URL from CLI output."""
+    m = re.search(r"https://\S+", text)
+    return m.group(0) if m else ""
 
 
 async def _download(url: str, dest: Path) -> None:
-    """Download a file from url to dest."""
     async with httpx.AsyncClient(timeout=120.0, follow_redirects=True) as client:
         async with client.stream("GET", url) as resp:
             resp.raise_for_status()
@@ -118,9 +111,3 @@ def _video_prompt(copy: str) -> str:
         f"Smooth cinematic camera movement, product showcase animation, "
         f"professional ad style. {copy}"
     )
-
-
-def _log_status(status: object) -> None:
-    name = type(status).__name__
-    if name not in ("Queued",):  # suppress spammy queued messages
-        print(f"[video_gen] status: {name}")
