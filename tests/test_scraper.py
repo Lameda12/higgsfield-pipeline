@@ -8,7 +8,52 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from pipeline.scraper import scrape_product, _strip_html, _extract_features_from_text
+from pipeline.scraper import scrape_product, _strip_html, _extract_features_from_text, _validate_url
+
+
+# --- _validate_url (SSRF guard) ---
+
+def test_validate_url_allows_https() -> None:
+    _validate_url("https://mystore.myshopify.com/products/widget")  # must not raise
+
+
+def test_validate_url_allows_http() -> None:
+    _validate_url("http://mystore.myshopify.com/products/widget")  # must not raise
+
+
+def test_validate_url_blocks_ftp() -> None:
+    with pytest.raises(ValueError, match="scheme"):
+        _validate_url("ftp://mystore.com/file.zip")
+
+
+def test_validate_url_blocks_file_scheme() -> None:
+    with pytest.raises(ValueError, match="scheme"):
+        _validate_url("file:///etc/passwd")
+
+
+def test_validate_url_blocks_localhost() -> None:
+    with pytest.raises(ValueError, match="host"):
+        _validate_url("http://localhost/admin")
+
+
+def test_validate_url_blocks_127() -> None:
+    with pytest.raises(ValueError, match="private IP"):
+        _validate_url("http://127.0.0.1/secret")
+
+
+def test_validate_url_blocks_169_254() -> None:
+    with pytest.raises(ValueError, match="private IP"):
+        _validate_url("http://169.254.169.254/latest/meta-data/")
+
+
+def test_validate_url_blocks_10_x() -> None:
+    with pytest.raises(ValueError, match="private IP"):
+        _validate_url("http://10.0.0.1/internal")
+
+
+def test_validate_url_blocks_192_168() -> None:
+    with pytest.raises(ValueError, match="private IP"):
+        _validate_url("http://192.168.1.1/router")
 
 
 # --- unit tests for helpers ---

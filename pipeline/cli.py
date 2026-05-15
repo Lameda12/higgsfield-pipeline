@@ -29,12 +29,13 @@ def main() -> None:
 @click.argument("url")
 @click.option("--image", is_flag=True, default=False, help="Also generate product image via Kling.")
 @click.option("--output-dir", default="outputs", show_default=True, help="Base output directory.")
-def run(url: str, image: bool, output_dir: str) -> None:
+@click.option("--dry-run", is_flag=True, default=False, help="Scrape + copy only — skip video and image generation.")
+def run(url: str, image: bool, output_dir: str, dry_run: bool) -> None:
     """Run the full pipeline for a product URL."""
-    asyncio.run(_run_pipeline(url=url, image=image, output_dir=Path(output_dir)))
+    asyncio.run(_run_pipeline(url=url, image=image, output_dir=Path(output_dir), dry_run=dry_run))
 
 
-async def _run_pipeline(url: str, image: bool, output_dir: Path) -> None:
+async def _run_pipeline(url: str, image: bool, output_dir: Path, dry_run: bool = False) -> None:
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     run_dir = output_dir / timestamp
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -55,27 +56,30 @@ async def _run_pipeline(url: str, image: bool, output_dir: Path) -> None:
     (run_dir / "selected_copy.txt").write_text(selected_copy)
     click.echo(f"[scorer] Selected: {selected_copy[:80]}...")
 
-    click.echo("[video_gen] Generating video ...")
-    try:
-        video_path = await asyncio.wait_for(
-            generate_video(copy=selected_copy, output_dir=run_dir), timeout=120.0
-        )
-        click.echo(f"[video_gen] Video saved: {video_path}")
-    except asyncio.TimeoutError:
-        click.echo("[video_gen] WARNING: video generation timed out after 120s")
-    except Exception as exc:
-        click.echo(f"[video_gen] WARNING: video generation failed — {exc}")
-
-    if image:
-        click.echo("[image_gen] Generating image ...")
+    if dry_run:
+        click.echo("[pipeline] Dry run — skipping video and image generation.")
+    else:
+        click.echo("[video_gen] Generating video ...")
         try:
-            image_path = await asyncio.wait_for(
-                generate_image(copy=selected_copy, output_dir=run_dir), timeout=120.0
+            video_path = await asyncio.wait_for(
+                generate_video(copy=selected_copy, output_dir=run_dir), timeout=120.0
             )
-            click.echo(f"[image_gen] Image saved: {image_path}")
+            click.echo(f"[video_gen] Video saved: {video_path}")
         except asyncio.TimeoutError:
-            click.echo("[image_gen] WARNING: image generation timed out after 120s")
+            click.echo("[video_gen] WARNING: video generation timed out after 120s")
         except Exception as exc:
-            click.echo(f"[image_gen] WARNING: image generation failed — {exc}")
+            click.echo(f"[video_gen] WARNING: video generation failed — {exc}")
+
+        if image:
+            click.echo("[image_gen] Generating image ...")
+            try:
+                image_path = await asyncio.wait_for(
+                    generate_image(copy=selected_copy, output_dir=run_dir), timeout=120.0
+                )
+                click.echo(f"[image_gen] Image saved: {image_path}")
+            except asyncio.TimeoutError:
+                click.echo("[image_gen] WARNING: image generation timed out after 120s")
+            except Exception as exc:
+                click.echo(f"[image_gen] WARNING: image generation failed — {exc}")
 
     click.echo(f"[pipeline] Done. Assets in {run_dir}")
