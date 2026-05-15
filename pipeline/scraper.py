@@ -2,10 +2,39 @@
 
 from __future__ import annotations
 
+import ipaddress
 import re
 from urllib.parse import urlparse
 
 import httpx
+
+_PRIVATE_NETS = [
+    ipaddress.ip_network("10.0.0.0/8"),
+    ipaddress.ip_network("172.16.0.0/12"),
+    ipaddress.ip_network("192.168.0.0/16"),
+    ipaddress.ip_network("127.0.0.0/8"),
+    ipaddress.ip_network("169.254.0.0/16"),
+    ipaddress.ip_network("::1/128"),
+]
+_BLOCKED_HOSTS = {"localhost", "0.0.0.0"}
+
+
+def _validate_url(url: str) -> None:
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        raise ValueError(f"Blocked URL scheme '{parsed.scheme}': only http/https allowed.")
+    host = parsed.hostname or ""
+    if host in _BLOCKED_HOSTS:
+        raise ValueError(f"Blocked host '{host}': internal addresses not allowed.")
+    try:
+        addr = ipaddress.ip_address(host)
+        for net in _PRIVATE_NETS:
+            if addr in net:
+                raise ValueError(f"Blocked private IP '{host}': SSRF protection.")
+    except ValueError as exc:
+        if "SSRF" in str(exc) or "Blocked" in str(exc):
+            raise
+        # host is a domain name — allowed
 
 _HEADERS = {
     "User-Agent": (
@@ -33,6 +62,7 @@ async def scrape_product(url: str) -> dict:
     Raises:
         ValueError: If the URL is not a supported site or product data cannot be extracted.
     """
+    _validate_url(url)
     host = urlparse(url).netloc.lower()
 
     async with httpx.AsyncClient(headers=_HEADERS, timeout=_TIMEOUT, follow_redirects=True) as client:
@@ -119,7 +149,7 @@ def _re_extract(html: str, patterns: list[str]) -> str:
 
 
 def _strip_html(text: str) -> str:
-    return re.sub(r"<[^>]+>", " ", text).strip()
+    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", text)).strip()
 
 
 def _extract_features_from_text(text: str) -> list[str]:

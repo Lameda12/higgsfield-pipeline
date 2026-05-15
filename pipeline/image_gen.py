@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 
@@ -18,7 +17,6 @@ async def generate_image(copy: str, output_dir: Path) -> Path:
     """
     # STUB: raises NotImplementedError.
     # Real impl: POST to Kling API with copy as prompt, download image to output_dir.
-    _ = os.getenv("KLING_API_KEY")
     raise NotImplementedError(
         "generate_image not yet implemented — wire up the Kling API client."
     )

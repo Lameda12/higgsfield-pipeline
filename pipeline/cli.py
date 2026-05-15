@@ -57,16 +57,24 @@ async def _run_pipeline(url: str, image: bool, output_dir: Path) -> None:
 
     click.echo("[video_gen] Generating video ...")
     try:
-        video_path = await generate_video(copy=selected_copy, output_dir=run_dir)
+        video_path = await asyncio.wait_for(
+            generate_video(copy=selected_copy, output_dir=run_dir), timeout=120.0
+        )
         click.echo(f"[video_gen] Video saved: {video_path}")
+    except asyncio.TimeoutError:
+        click.echo("[video_gen] WARNING: video generation timed out after 120s")
     except Exception as exc:
         click.echo(f"[video_gen] WARNING: video generation failed — {exc}")
 
     if image:
         click.echo("[image_gen] Generating image ...")
         try:
-            image_path = await generate_image(copy=selected_copy, output_dir=run_dir)
+            image_path = await asyncio.wait_for(
+                generate_image(copy=selected_copy, output_dir=run_dir), timeout=120.0
+            )
             click.echo(f"[image_gen] Image saved: {image_path}")
+        except asyncio.TimeoutError:
+            click.echo("[image_gen] WARNING: image generation timed out after 120s")
         except Exception as exc:
             click.echo(f"[image_gen] WARNING: image generation failed — {exc}")
 

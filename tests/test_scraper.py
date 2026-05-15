@@ -14,7 +14,7 @@ from pipeline.scraper import scrape_product, _strip_html, _extract_features_from
 # --- unit tests for helpers ---
 
 def test_strip_html_removes_tags() -> None:
-    assert _strip_html("<b>Hello</b> <i>world</i>") == "Hello   world"
+    assert _strip_html("<b>Hello</b> <i>world</i>") == "Hello world"
 
 
 def test_extract_features_splits_sentences() -> None:

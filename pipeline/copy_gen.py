@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 
 import anthropic
 
@@ -66,13 +67,7 @@ async def generate_copy(product: dict) -> list[dict]:
     )
 
     raw = message.content[0].text.strip()
-
-    # Strip accidental markdown fences if Claude includes them
-    if raw.startswith("```"):
-        raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
-        raw = raw.strip()
+    raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw, flags=re.MULTILINE).strip()
 
     try:
         variants = json.loads(raw)
