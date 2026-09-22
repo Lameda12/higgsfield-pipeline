@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en" data-bs-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>higgsfield-pipeline — agentic content pipeline</title>
+  <meta name="description" content="Product URL in, campaign-ready image/video assets out. A CLI-driven agentic content pipeline powered by Claude, Higgsfield and Kling.">
+
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+  <nav class="navbar navbar-expand-lg fixed-top navbar-dark" id="mainNav">
+    <div class="container">
+      <a class="navbar-brand fw-bold" href="#top">⚡ higgsfield-pipeline</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navMenu">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item"><a class="nav-link" href="#how">How it works</a></li>
+          <li class="nav-item"><a class="nav-link" href="#stack">Stack</a></li>
+          <li class="nav-item"><a class="nav-link" href="#usage">Usage</a></li>
+          <li class="nav-item"><a class="nav-link" href="#demo">Demo output</a></li>
+          <li class="nav-item">
+            <a class="btn btn-outline-light btn-sm ms-lg-3" href="https://github.com/Lameda12/higgsfield-pipeline" target="_blank" rel="noopener">GitHub</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <header id="top" class="hero d-flex align-items-center">
+    <div class="container py-5">
+      <div class="row align-items-center g-5">
+        <div class="col-lg-7">
+          <span class="badge rounded-pill text-bg-primary-subtle border border-primary-subtle mb-3">Python 3.12 · CLI · Agentic pipeline</span>
+          <h1 class="display-4 fw-bold mb-3">Product URL in.<br><span class="text-gradient">Campaign-ready assets out.</span></h1>
+          <p class="lead text-body-secondary mb-4">
+            higgsfield-pipeline scrapes a product page, generates and scores hook copy with Claude,
+            then renders a short campaign video with the Higgsfield MCP server — no manual steps, one command.
+          </p>
+          <div class="d-flex flex-wrap gap-3">
+            <a href="https://github.com/Lameda12/higgsfield-pipeline" target="_blank" rel="noopener" class="btn btn-primary btn-lg px-4">View on GitHub</a>
+            <a href="#usage" class="btn btn-outline-secondary btn-lg px-4">See the CLI</a>
+          </div>
+        </div>
+        <div class="col-lg-5">
+          <div class="terminal shadow-lg">
+            <div class="terminal-bar">
+              <span class="dot dot-red"></span><span class="dot dot-yellow"></span><span class="dot dot-green"></span>
+              <span class="terminal-title">zsh</span>
+            </div>
+            <pre class="terminal-body mb-0"><code>$ pipeline run https://allbirds.com/products/mens-wool-runners
+
+<span class="ok">✓</span> scraped product page
+<span class="ok">✓</span> generated 3 copy variants
+<span class="ok">✓</span> selected: "Called the world's most
+  comfortable shoe by millions
+  of customers."
+<span class="ok">✓</span> video rendered via Higgsfield MCP
+
+outputs/20260515_161522/
+├── copy_variants.json
+├── selected_copy.txt
+└── campaign_video.mp4</code></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <section id="how" class="py-5 py-lg-6">
+    <div class="container">
+      <h2 class="section-title">How it works</h2>
+      <p class="text-body-secondary mb-5">Five steps, zero manual glue.</p>
+      <div class="row g-4">
+        <div class="col-md-6 col-lg">
+          <div class="step-card h-100">
+            <div class="step-num">01</div>
+            <h3 class="h5">Scrape</h3>
+            <p class="text-body-secondary mb-0">Pulls name, price, tagline and key features from the product page via async <code>httpx</code>.</p>
+          </div>
+        </div>
+        <div class="col-md-6 col-lg">
+          <div class="step-card h-100">
+            <div class="step-num">02</div>
+            <h3 class="h5">Generate copy</h3>
+            <p class="text-body-secondary mb-0">Claude writes 3–5 hook variants across different angles — problem/solution, social proof, curiosity.</p>
+          </div>
+        </div>
+        <div class="col-md-6 col-lg">
+          <div class="step-num">03</div>
+          <div class="step-card h-100">
+            <h3 class="h5">Score &amp; select</h3>
+            <p class="text-body-secondary mb-0">A heuristic scorer ranks variants and auto-picks the strongest hook.</p>
+          </div>
+        </div>
+        <div class="col-md-6 col-lg">
+          <div class="step-card h-100">
+            <div class="step-num">04</div>
+            <h3 class="h5">Generate video</h3>
+            <p class="text-body-secondary mb-0">Calls the Higgsfield MCP server to render a short campaign clip from the winning copy.</p>
+          </div>
+        </div>
+        <div class="col-md-6 col-lg">
+          <div class="step-card h-100">
+            <div class="step-num">05</div>
+            <h3 class="h5">Ship assets</h3>
+            <p class="text-body-secondary mb-0">Everything lands in <code>outputs/&lt;timestamp&gt;/</code> — video, copy JSON, selected hook.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="stack" class="py-5 py-lg-6 bg-body-tertiary">
+    <div class="container">
+      <h2 class="section-title">Stack</h2>
+      <p class="text-body-secondary mb-5">Small, typed, async.</p>
+      <div class="row g-3">
+        <div class="col-6 col-md-4 col-lg-2"><div class="stack-pill">Python 3.12</div></div>
+        <div class="col-6 col-md-4 col-lg-2"><div class="stack-pill">Claude API</div></div>
+        <div class="col-6 col-md-4 col-lg-2"><div class="stack-pill">Higgsfield MCP</div></div>
+        <div class="col-6 col-md-4 col-lg-2"><div class="stack-pill">Kling API</div></div>
+        <div class="col-6 col-md-4 col-lg-2"><div class="stack-pill">httpx</div></div>
+        <div class="col-6 col-md-4 col-lg-2"><div class="stack-pill">click</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="usage" class="py-5 py-lg-6">
+    <div class="container">
+      <h2 class="section-title">Usage</h2>
+      <p class="text-body-secondary mb-5">Install, set your keys, run.</p>
+      <div class="row g-4">
+        <div class="col-lg-6">
+          <div class="code-block">
+            <div class="code-block-header">
+              <span>install</span>
+              <button class="copy-btn" data-copy-target="code-install" type="button">Copy</button>
+            </div>
+            <pre class="mb-0"><code id="code-install">python -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
+cp .env.example .env   # fill in ANTHROPIC_API_KEY</code></pre>
+          </div>
+        </div>
+        <div class="col-lg-6">
+          <div class="code-block">
+            <div class="code-block-header">
+              <span>run</span>
+              <button class="copy-btn" data-copy-target="code-run" type="button">Copy</button>
+            </div>
+            <pre class="mb-0"><code id="code-run">pipeline run https://example.com/products/your-product
+
+# dry run: scrape + copy only, no video
+pipeline run https://example.com/products/your-product --dry-run
+
+# also generate a product image
+pipeline run https://example.com/products/your-product --image</code></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="demo" class="py-5 py-lg-6 bg-body-tertiary">
+    <div class="container">
+      <h2 class="section-title">Demo output</h2>
+      <p class="text-body-secondary mb-5">Run against a real Allbirds product page.</p>
+      <div class="row g-4">
+        <div class="col-lg-7">
+          <div class="code-block">
+            <div class="code-block-header"><span>copy_variants.json</span></div>
+            <pre class="mb-0"><code>[
+  {
+    "id": 1,
+    "angle": "problem-solution",
+    "copy": "Tired of uncomfortable sneakers? This wool shoe changes everything.",
+    "score": 0.0
+  },
+  {
+    "id": 2,
+    "angle": "social-proof",
+    "copy": "Called the world's most comfortable shoe by millions of customers.",
+    "score": 7.5918
+  },
+  {
+    "id": 3,
+    "angle": "curiosity",
+    "copy": "The original wool sneaker that started a comfort revolution.",
+    "score": 0.0
+  }
+]</code></pre>
+          </div>
+        </div>
+        <div class="col-lg-5">
+          <div class="code-block h-100 d-flex flex-column">
+            <div class="code-block-header"><span>selected_copy.txt</span></div>
+            <pre class="mb-0 flex-grow-1 d-flex align-items-center"><code>Called the world's most comfortable
+shoe by millions of customers.</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-responsive mt-5">
+        <table class="table table-dark table-hover align-middle mb-0">
+          <thead>
+            <tr><th>Site</th><th>Method</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Shopify stores</td><td><code>/products/&lt;handle&gt;.json</code> — reliable, no HTML parsing</td></tr>
+            <tr><td>Amazon</td><td>HTML heuristics — may break on layout changes</td></tr>
+            <tr><td>Other</td><td>Falls back to Shopify JSON API pattern</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <footer class="py-5 border-top border-secondary-subtle">
+    <div class="container d-flex flex-column flex-md-row justify-content-between align-items-center gap-3">
+      <p class="mb-0 text-body-secondary">
+        <a href="https://github.com/Lameda12/higgsfield-pipeline" target="_blank" rel="noopener" class="link-light text-decoration-none fw-semibold">higgsfield-pipeline</a>
+        · built by <a href="https://github.com/Lameda12" target="_blank" rel="noopener" class="link-light text-decoration-none">Lameda12</a>
+      </p>
+      <p class="mb-0 text-body-secondary small">© <span id="year"></span> · MIT-style, see repo for license</p>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+          integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+  <script src="assets/script.js"></script>
+</body>
+</html>
